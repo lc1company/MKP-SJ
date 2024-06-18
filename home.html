@@ -28,6 +28,9 @@
             padding: 20px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .product-card img {
@@ -55,79 +58,60 @@
             background: none;
             border: none;
             color: white;
-            font-size: 18px;
+            font-size: 16px;
             cursor: pointer;
-            flex: 1;
-            padding: 10px;
-        }
-
-        .bottom-nav button:hover {
-            background-color: #0056b3;
         }
 
         #sellForm {
             display: none;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
 
-        #sellForm form {
-            display: flex;
-            flex-direction: column;
-        }
-
-        #sellForm input[type="text"],
-        #sellForm input[type="number"],
-        #sellForm input[type="file"] {
-            padding: 10px;
+        #sellForm input,
+        #sellForm textarea {
+            width: 100%;
             margin-bottom: 10px;
-            border: 1px solid #ccc;
+            padding: 10px;
             border-radius: 4px;
+            border: 1px solid #ccc;
         }
 
-        #sellForm input[type="submit"] {
-            padding: 10px;
+        #sellForm button {
             background-color: #007bff;
+            color: white;
+            padding: 10px;
             border: none;
             border-radius: 4px;
-            color: #fff;
             cursor: pointer;
         }
 
-        #sellForm input[type="submit"]:hover {
-            background-color: #0056b3;
+        h2 {
+            text-align: center;
         }
     </style>
 </head>
 
 <body>
-
+    <h2>Home</h2>
     <div class="container" id="productContainer">
         <!-- Os produtos serão carregados aqui -->
     </div>
-
+    <div class="container" id="sellForm">
+        <h2>Lojas Parceiras</h2>
+    </div>
     <div class="bottom-nav">
         <button onclick="showHome()">Home</button>
-        <button onclick="showSellForm()">Vender</button>
+        <button onclick="showSellForm()">Lojas Parceiras</button>
         <button onclick="showProfile()">Meu Perfil</button>
     </div>
 
-    <div id="sellForm">
-        <form id="productForm" onsubmit="addProduct(event)">
-            <input type="text" placeholder="Nome do Produto" id="productName" required>
-            <input type="text" placeholder="Descrição" id="productDescription" required>
-            <input type="number" placeholder="Preço" id="productPrice" required>
-            <input type="file" id="productImage" required>
-            <input type="submit" value="Adicionar Produto">
-        </form>
-    </div>
-
     <script type="module">
-        // Importar as bibliotecas do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+        import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-        // Configurações do Firebase
         const firebaseConfig = {
             apiKey: "AIzaSyBWzJvwwupeyVts_elKXG0a-ILTqP6Mvzg",
             authDomain: "markeplace-sj.firebaseapp.com",
@@ -138,13 +122,9 @@
             measurementId: "G-C1710MDZ9F"
         };
 
-        // Inicializar o Firebase
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
         const db = getFirestore(app);
-        const storage = getStorage(app);
 
-        // Função para mostrar produtos
         async function showProducts() {
             const productContainer = document.getElementById('productContainer');
             productContainer.innerHTML = ''; // Limpa o container
@@ -159,93 +139,29 @@
                     <h3>${product.name}</h3>
                     <p>${product.description}</p>
                     <p>R$ ${product.price}</p>
+                    <a href="${product.productLink}">Visitar Loja</a>
                 `;
                 productContainer.appendChild(productCard);
             });
         }
 
-        // Função para comprimir a imagem
-        window.compressImage = async function (imageFile) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-
-                reader.onload = function (event) {
-                    const img = new Image();
-
-                    img.onload = function () {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-
-                        // Definir as dimensões máximas da imagem
-                        const maxWidth = 800;
-                        const maxHeight = 600;
-
-                        let width = img.width;
-                        let height = img.height;
-
-                        // Redimensionar a imagem mantendo a proporção
-                        if (width > height) {
-                            if (width > maxWidth) {
-                                height *= maxWidth / width;
-                                width = maxWidth;
-                            }
-                        } else {
-                            if (height > maxHeight) {
-                                width *= maxHeight / height;
-                                height = maxHeight;
-                            }
-                        }
-
-                        canvas.width = width;
-                        canvas.height = height;
-
-                        // Desenhar a imagem redimensionada no canvas
-                        ctx.drawImage(img, 0, 0, width, height);
-
-                        // Converter o canvas de volta para Blob
-                        canvas.toBlob((blob) => {
-                            resolve(blob);
-                        }, 'image/jpeg', 0.8); // Comprimir para JPEG com 80% de qualidade
-                    };
-
-                    img.src = event.target.result;
-                };
-
-                reader.readAsDataURL(imageFile);
-            });
-        }
-
-        // Função para adicionar um produto
-        window.addProduct = async function (event) {
-            event.preventDefault(); // Evita a atualização da página
+        async function sellProduct() {
             const name = document.getElementById('productName').value;
             const description = document.getElementById('productDescription').value;
             const price = document.getElementById('productPrice').value;
-            const image = document.getElementById('productImage').files[0];
+            const imageUrl = document.getElementById('productImageUrl').value;
+            const productLink = document.getElementById('productLink').value;
 
-            try {
-                // Comprimir a imagem antes de fazer o upload
-                const compressedImage = await compressImage(image);
+            await addDoc(collection(db, 'products'), {
+                name,
+                description,
+                price,
+                imageUrl,
+                productLink
+            });
 
-                // Upload da imagem comprimida para o Firebase Storage
-                const storageRef = ref(storage, 'products/' + image.name);
-                await uploadBytes(storageRef, compressedImage);
-                const imageUrl = await getDownloadURL(storageRef);
-
-                // Adicionar produto ao Firestore
-                await addDoc(collection(db, 'products'), {
-                    name: name,
-                    description: description,
-                    price: price,
-                    imageUrl: imageUrl
-                });
-
-                document.getElementById('productForm').reset(); // Reseta o formulário corretamente
-                showHome(); // Volta para a home após adicionar o produto
-                showProducts(); // Atualiza a lista de produtos
-            } catch (error) {
-                console.error("Erro ao adicionar produto: ", error);
-            }
+            showHome();
+            showProducts();
         }
 
         // Funções para navegação
@@ -263,10 +179,8 @@
             window.location.href = 'profile.html'; // Supondo que você tenha uma página de perfil
         }
 
-        // Mostrar os produtos ao carregar a página
-        showProducts();
+        window.onload = showProducts;
     </script>
-
 </body>
 
 </html>
