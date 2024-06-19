@@ -11,11 +11,12 @@
         body {
             font-family: 'Roboto', sans-serif;
             background-color: #f5f5f5;
-            margin: 0;
+            margin: 0 auto;
             padding: 0;
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            min-height: 100vh;
+            max-width: 920px;
             color: #333;
         }
 
@@ -27,7 +28,7 @@
 
         .product-list {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(2, 1fr);
             gap: 20px;
             padding: 20px;
         }
@@ -40,8 +41,6 @@
             display: flex;
             flex-direction: column;
             transition: transform 0.2s, box-shadow 0.2s;
-            max-width: 250px;
-            margin: auto;
         }
 
         .product-card:hover {
@@ -60,27 +59,29 @@
             margin: 10px 0;
             font-family: 'Playfair Display', serif;
             color: #444;
+            font-size: 1.5em;
         }
 
         .product-card p {
             margin: 5px 0;
             color: #666;
+            font-size: 1em;
         }
 
         .product-card a {
-            margin-top: 10px;
+            margin-top: auto;
             padding: 10px 20px;
             background-color: #007bff;
             color: white;
             text-decoration: none;
             border-radius: 4px;
             transition: background-color 0.3s;
+            text-align: center;
         }
 
         .product-card a:hover {
             background-color: #0056b3;
         }
-
 
         .bottom-nav {
             width: 100%;
@@ -142,6 +143,7 @@
             text-align: center;
             font-family: 'Playfair Display', serif;
             color: #444;
+            font-size: 2em;
         }
 
         .store-info {
@@ -166,9 +168,11 @@
 </head>
 
 <body>
-    <div class="container product-list" id="productContainer">
+    <div class="container" id="productContainer">
         <h2>Home</h2>
-        <!-- Os produtos serão carregados aqui -->
+        <div class="product-list">
+            <!-- Os produtos serão carregados aqui -->
+        </div>
     </div>
     <div class="container" id="sellForm">
         <h2>Lojas Parceiras</h2>
@@ -197,7 +201,7 @@
         const db = getFirestore(app);
 
         async function showProducts() {
-            const productContainer = document.getElementById('productContainer');
+            const productContainer = document.querySelector('.product-list');
             productContainer.innerHTML = ''; // Limpa o container
 
             const querySnapshot = await getDocs(collection(db, 'products'));
