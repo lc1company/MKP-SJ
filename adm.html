@@ -6,8 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Página de Administração</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Roboto', sans-serif;
             background-color: #f0f0f0;
             margin: 0;
             padding: 20px;
@@ -24,6 +26,7 @@
 
         .admin-container h2 {
             text-align: center;
+            color: #444;
         }
 
         .admin-container form {
@@ -38,6 +41,7 @@
             margin-bottom: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
+            font-size: 16px;
         }
 
         .admin-container input[type="submit"] {
@@ -47,10 +51,55 @@
             border-radius: 4px;
             color: #fff;
             cursor: pointer;
+            font-size: 16px;
         }
 
         .admin-container input[type="submit"]:hover {
             background-color: #0056b3;
+        }
+
+        .product-list {
+            margin-top: 20px;
+        }
+
+        .product-card {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .product-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .product-info img {
+            max-width: 60px;
+            border-radius: 50%;
+            margin-right: 15px;
+        }
+
+        .product-info div {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-actions button {
+            background-color: red;
+            border: none;
+            color: white;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .product-actions button:hover {
+            background-color: darkred;
         }
     </style>
 </head>
@@ -69,13 +118,15 @@
             <input type="submit" value="Adicionar Produto">
         </form>
         <p id="adminMessage" style="display:none;"></p>
+
+        <div class="product-list" id="productList"></div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, getDoc, setDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+        import { getFirestore, doc, getDoc, setDoc, collection, getDocs, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWzJvwwupeyVts_elKXG0a-ILTqP6Mvzg",
@@ -97,8 +148,9 @@
                 const userDoc = await getDoc(doc(db, "users", user.uid));
                 if (userDoc.exists() && userDoc.data().role === "admin") {
                     console.log("Usuário é admin");
+                    loadProducts();
                 } else {
-                    console.log("Usuario Não é um Administrador")
+                    console.log("Usuario Não é um Administrador");
                     alert('Usuario Não é um Administrador');
                     window.location.href = "RegisterOrLogin.html";
                 }
@@ -145,7 +197,7 @@
             });
         }
 
-        window.addAdminProduct = async function(event) {
+        window.addAdminProduct = async function (event) {
             event.preventDefault();
             const storeName = document.getElementById('storeName').value;
             const productLink = document.getElementById('productLink').value;
@@ -179,9 +231,58 @@
                 document.getElementById('adminProductForm').reset();
                 document.getElementById('adminMessage').innerHTML = "Produto adicionado com sucesso!";
                 document.getElementById('adminMessage').style.display = "block";
+                loadProducts();
             } catch (error) {
                 console.error("Erro ao adicionar produto: ", error);
                 document.getElementById('adminMessage').innerHTML = "Erro ao adicionar produto. Tente novamente.";
+                document.getElementById('adminMessage').style.display = "block";
+            }
+        }
+
+        async function loadProducts() {
+            const productList = document.getElementById('productList');
+            productList.innerHTML = '';
+            const querySnapshot = await getDocs(collection(db, 'products'));
+            querySnapshot.forEach((doc) => {
+                const product = doc.data();
+                const productCard = document.createElement('div');
+                productCard.className = 'product-card';
+                productCard.innerHTML = `
+                    <div class="product-info">
+                        <img src="${product.storeLogoUrl}" alt="${product.storeName} Logo">
+                        <div>
+                            <strong>${product.name}</strong>
+                            <p>${product.description}</p>
+                            <p>Preço: R$${product.price}</p>
+                        </div>
+                    </div>
+                    <div class="product-actions">
+                        <button onclick="deleteProduct('${doc.id}', '${product.imageUrl}', '${product.storeLogoUrl}')">Apagar</button>
+                    </div>
+                `;
+                productList.appendChild(productCard);
+            });
+        }
+
+        window.deleteProduct = async function (productId, imageUrl, storeLogoUrl) {
+            try {
+                // Apagar imagem do produto do storage
+                const productImageRef = ref(storage, imageUrl);
+                await deleteObject(productImageRef);
+
+                // Apagar logo da loja do storage
+                const storeLogoRef = ref(storage, storeLogoUrl);
+                await deleteObject(storeLogoRef);
+
+                // Apagar documento do Firestore
+                await deleteDoc(doc(db, 'products', productId));
+
+                document.getElementById('adminMessage').innerHTML = "Produto apagado com sucesso!";
+                document.getElementById('adminMessage').style.display = "block";
+                loadProducts();
+            } catch (error) {
+                console.error("Erro ao apagar produto: ", error);
+                document.getElementById('adminMessage').innerHTML = "Erro ao apagar produto. Tente novamente.";
                 document.getElementById('adminMessage').style.display = "block";
             }
         }
