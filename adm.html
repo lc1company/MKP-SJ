@@ -113,13 +113,22 @@
             <input type="file" id="storeLogo" required>
             <input type="text" placeholder="Nome do Produto" id="productName" required>
             <input type="text" placeholder="Descrição" id="productDescription" required>
-            <input type="number" placeholder="Preço" id="productPrice" required>
+            <input type="number" placeholder="Preço" id="productPrice" step="0.01" required>
             <input type="file" id="productImage" required>
             <input type="submit" value="Adicionar Produto">
         </form>
         <p id="adminMessage" style="display:none;"></p>
 
         <div class="product-list" id="productList"></div>
+        <h2>Gerenciar Lojas Parceiras</h2>
+        <form id="partnerStoreForm" onsubmit="addPartnerStore(event)">
+            <input type="text" placeholder="Nome da Loja" id="partnerStoreName" required>
+            <input type="text" placeholder="Link da Loja" id="partnerStoreLink" required>
+            <input type="file" id="partnerStoreLogo" required>
+            <input type="submit" value="Adicionar Loja Parceira">
+        </form>
+        <p id="partnerStoreMessage" style="display:none;"></p>
+        <div class="store-list" id="storeList"></div>
     </div>
 
     <script type="module">
@@ -149,13 +158,14 @@
                 if (userDoc.exists() && userDoc.data().role === "admin") {
                     console.log("Usuário é admin");
                     loadProducts();
+                    loadPartnerStores();
                 } else {
                     console.log("Usuario Não é um Administrador");
                     alert('Usuario Não é um Administrador');
                     window.location.href = "RegisterOrLogin.html";
                 }
             } else {
-                window.location.href = "login.html";
+                window.location.href = "RegisterOrLogin.html";
             }
         });
 
@@ -286,6 +296,71 @@
                 document.getElementById('adminMessage').style.display = "block";
             }
         }
+
+        async function loadPartnerStores() {
+            const storeList = document.getElementById('storeList');
+            storeList.innerHTML = '';
+            const querySnapshot = await getDocs(collection(db, "partnerStores"));
+            querySnapshot.forEach((doc) => {
+                const store = doc.data();
+                const storeDiv = document.createElement('div');
+                storeDiv.className = 'store-card';
+                storeDiv.innerHTML = `
+                    <div class="store-info">
+                        <img src="${store.logoUrl}" alt="Store Logo">
+                        <div>
+                            <h3>${store.name}</h3>
+                            <a href="${store.link}" target="_blank">Visitar Loja</a>
+                        </div>
+                    </div>
+                    <div class="store-actions">
+                        <button style="background-color: red; color: #fff; font-size 20px; border-radius: 15px; "onclick="deletePartnerStore('${doc.id}', '${store.logoUrl}')">Apagar</button>
+                    </div>
+                `;
+                storeList.appendChild(storeDiv);
+            });
+        }
+
+        window.addPartnerStore = async function (event) {
+            event.preventDefault();
+            const partnerStoreName = document.getElementById('partnerStoreName').value;
+            const partnerStoreLink = document.getElementById('partnerStoreLink').value;
+            const partnerStoreLogo = document.getElementById('partnerStoreLogo').files[0];
+
+            try {
+                const compressedPartnerStoreLogo = await compressImage(partnerStoreLogo);
+                const partnerStoreLogoRef = ref(storage, 'partnerStoreLogos/' + partnerStoreLogo.name);
+                await uploadBytes(partnerStoreLogoRef, compressedPartnerStoreLogo);
+                const partnerStoreLogoUrl = await getDownloadURL(partnerStoreLogoRef);
+
+                await addDoc(collection(db, 'partnerStores'), {
+                    name: partnerStoreName,
+                    link: partnerStoreLink,
+                    logoUrl: partnerStoreLogoUrl
+                });
+
+                document.getElementById('partnerStoreForm').reset();
+                document.getElementById('partnerStoreMessage').innerHTML = "Loja parceira adicionada com sucesso!";
+                document.getElementById('partnerStoreMessage').style.display = "block";
+                loadPartnerStores();
+            } catch (error) {
+                console.error("Erro ao adicionar loja parceira: ", error);
+                document.getElementById('partnerStoreMessage').innerHTML = "Erro ao adicionar loja parceira.";
+                document.getElementById('partnerStoreMessage').style.display = "block";
+            }
+        };
+
+        window.deletePartnerStore = async function (storeId, logoUrl) {
+            try {
+                const logoRef = ref(storage, logoUrl);
+                await deleteObject(logoRef);
+                await deleteDoc(doc(db, 'partnerStores', storeId));
+                console.log("Loja parceira deletada com sucesso.");
+                loadPartnerStores();
+            } catch (error) {
+                console.error("Erro ao apagar loja parceira: ", error);
+            }
+        };
     </script>
 </body>
 
