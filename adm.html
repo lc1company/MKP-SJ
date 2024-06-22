@@ -101,6 +101,17 @@
         .product-actions button:hover {
             background-color: darkred;
         }
+
+        .store-card {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
     </style>
 </head>
 
@@ -307,7 +318,7 @@
                 storeDiv.className = 'store-card';
                 storeDiv.innerHTML = `
                     <div class="store-info">
-                        <img src="${store.logoUrl}" alt="Store Logo">
+                        <img src="${store.logoUrl}" style="width: 35%; height: 25%; border-radius: 50%;" alt="Store Logo">
                         <div>
                             <h3>${store.name}</h3>
                             <a href="${store.link}" target="_blank">Visitar Loja</a>
