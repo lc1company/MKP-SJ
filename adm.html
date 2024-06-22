@@ -79,7 +79,8 @@
         }
 
         .product-info img {
-            max-width: 60px;
+            height: 30%;
+            width: 30%;
             border-radius: 50%;
             margin-right: 15px;
         }
@@ -118,6 +119,7 @@
 <body>
     <div class="admin-container">
         <h2>Página de Administração</h2>
+        <h2>Gerenciar Produtos</h2>
         <form id="adminProductForm" onsubmit="addAdminProduct(event)">
             <input type="text" placeholder="Nome da Loja" id="storeName" required>
             <input type="text" placeholder="Link do Produto" id="productLink" required>
@@ -270,7 +272,7 @@
                 productCard.className = 'product-card';
                 productCard.innerHTML = `
                     <div class="product-info">
-                        <img src="${product.storeLogoUrl}" alt="${product.storeName} Logo">
+                        <img src="${product.imageUrl}" alt="${product.name} Logo">
                         <div>
                             <strong>${product.name}</strong>
                             <p>${product.description}</p>
