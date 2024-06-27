@@ -4,234 +4,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Marketplace de Semijoias</title>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" />
+    <title>Solicitação de Corrida</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Roboto:wght@300;400;700&display=swap');
-
         body {
-            font-family: 'Roboto', sans-serif;
-            background-color: #f5f5f5;
-            margin: 0 auto;
+            font-family: Arial, sans-serif;
+            margin: 0;
             padding: 0;
             display: flex;
             flex-direction: column;
-            min-height: 100vh;
-            max-width: 920px;
-            color: #333;
+            align-items: center;
+            background-color: #f4f4f4;
         }
 
         .container {
-            flex: 1;
-            overflow-y: auto;
+            width: 90%;
+            max-width: 600px;
+            background: #fff;
             padding: 20px;
-        }
-
-        .product-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 20px;
-        }
-
-        .product-card {
-            background-color: #fff;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .product-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        .product-card img {
-            object-fit: cover;
-            max-width: 100%;
-            height: auto;
-            border-radius: 12px;
-            margin-bottom: 15px;
-        }
-
-        .product-card h3 {
-            margin: 10px 0;
-            font-family: 'Playfair Display', serif;
-            color: #444;
-            font-size: 1.5em;
-        }
-
-        .product-card p {
-            margin: 5px 0;
-            color: #666;
-            font-size: 1em;
-        }
-
-        .product-card a {
-            margin-top: auto;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            transition: background-color 0.3s;
-            text-align: center;
-        }
-
-        .product-card a:hover {
-            background-color: #0056b3;
-        }
-
-        .bottom-nav {
-            width: 100%;
-            display: flex;
-            justify-content: space-around;
-            background-color: #222;
-            padding: 15px 0;
-            position: fixed;
-            bottom: 0;
-        }
-
-        .bottom-nav button {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-            transition: color 0.3s;
-        }
-
-        .bottom-nav button:hover {
-            color: #007bff;
-        }
-
-        #sellForm {
-            display: none;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        #sellForm input,
-        #sellForm textarea {
-            width: 100%;
-            margin-bottom: 10px;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-        }
-
-        #sellForm button {
-            background-color: #007bff;
-            color: white;
-            padding: 15px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s;
-        }
-
-        #sellForm button:hover {
-            background-color: #0056b3;
-        }
-
-        h2 {
-            text-align: center;
-            font-family: 'Playfair Display', serif;
-            color: #444;
-            font-size: 2em;
-        }
-
-        .store-info {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .store-logo {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            margin-right: 10px;
-        }
-
-        .store-name {
-            font-weight: bold;
-            font-size: 18px;
-            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            margin-top: 20px;
         }
 
         h1 {
             text-align: center;
-            color: #444;
         }
 
-        .partner-stores {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
+        input,
+        button {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
         }
 
-        .partner-card {
-            background-color: #fff;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        #map {
+            height: 400px;
+            width: 100%;
+            margin-bottom: 20px;
         }
 
-        .partner-card img {
-            max-width: 100px;
-            border-radius: 50%;
-            margin-bottom: 10px;
-        }
-
-        .partner-card h3 {
+        #loadingMessage {
+            display: none;
             text-align: center;
-            margin-bottom: 5px;
-        }
-
-        .partner-card a {
+            margin: 20px 0;
             color: #007bff;
-            text-decoration: none;
-            text-align: center;
         }
 
-        .partner-card a:hover {
-            text-decoration: underline;
+        nav {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            background: #007bff;
+            padding: 10px 0;
+            position: fixed;
+            bottom: 0;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
         }
     </style>
 </head>
 
 <body>
-    <div class="container" id="productContainer">
-        <h2>Home</h2>
-        <div class="product-list">
-            <!-- Os produtos serão carregados aqui -->
-        </div>
+    <div class="container" id="homeContainer">
+        <h1>Solicitar Corrida</h1>
+        <input type="text" id="startLocation" placeholder="Ponto de Partida" list="startLocationSuggestions">
+        <datalist id="startLocationSuggestions"></datalist>
+        <input type="text" id="endLocation" placeholder="Destino" list="endLocationSuggestions">
+        <datalist id="endLocationSuggestions"></datalist>
+        <div id="map"></div>
+        <input type="text" id="price" placeholder="Preço Estimado" readonly>
+        <button id="requestRide">Solicitar Corrida</button>
+        <p id="loadingMessage">Aguardando motorista...</p>
     </div>
-    <div class="container" id="sellForm">
-        <h2>Lojas Parceiras</h2>
-        <div class="partner-stores" id="partnerStoresList">
-            <!-- Aqui serão adicionadas as lojas parceiras -->
-        </div>
+    <div class="container" id="rideHistoryContainer" style="display:none;">
+        <h1>Histórico de Viagens</h1>
     </div>
-    <div class="bottom-nav">
-        <button onclick="showHome()">Home</button>
-        <button onclick="showSellForm()">Lojas Parceiras</button>
-        <button onclick="showProfile()">Meu Perfil</button>
-    </div>
-
+    <nav>
+        <a href="#" onclick="showHome()">Home</a>
+        <a href="#" onclick="showRideHistory()">Histórico</a>
+    </nav>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, getDocs, addDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBWzJvwwupeyVts_elKXG0a-ILTqP6Mvzg",
@@ -245,90 +105,173 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const auth = getAuth(app);
 
-        async function showProducts() {
-            const productContainer = document.querySelector('.product-list');
-            productContainer.innerHTML = ''; // Limpa o container
+        let map, startMarker, endMarker;
 
-            const querySnapshot = await getDocs(collection(db, 'products'));
-            querySnapshot.forEach((doc) => {
-                const product = doc.data();
-                const productCard = document.createElement('div');
-                productCard.className = 'product-card';
-                productCard.innerHTML = `
-                    <div class="store-info">
-                        <img src="${product.storeLogoUrl}" alt="${product.storeName}" class="store-logo">
-                        <span class="store-name">${product.storeName}</span>
-                    </div>
-                    <img src="${product.imageUrl}" alt="${product.name}">
-                    <h3>${product.name}</h3>
-                    <p>${product.description}</p>
-                    <p>R$ ${product.price}</p>
-                    <a href="${product.productLink}">Visitar Loja</a>
-                `;
-                productContainer.appendChild(productCard);
-            });
-        }
+        window.initMap = function () {
+            map = L.map('map').setView([-23.55052, -46.633308], 13);
 
-        async function sellProduct() {
-            const name = document.getElementById('productName').value;
-            const description = document.getElementById('productDescription').value;
-            const price = document.getElementById('productPrice').value;
-            const imageUrl = document.getElementById('productImageUrl').value;
-            const productLink = document.getElementById('productLink').value;
-            const storeName = document.getElementById('storeName').value;
-            const storeLogoUrl = document.getElementById('storeLogoUrl').value;
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+            }).addTo(map);
 
-            await addDoc(collection(db, 'products'), {
-                name,
-                description,
-                price,
-                imageUrl,
-                productLink,
-                storeName,
-                storeLogoUrl
+            map.on('click', function (e) {
+                if (!startMarker) {
+                    startMarker = L.marker(e.latlng, { draggable: true }).addTo(map);
+                    startMarker.on('dragend', updateRoute);
+                } else if (!endMarker) {
+                    endMarker = L.marker(e.latlng, { draggable: true }).addTo(map);
+                    endMarker.on('dragend', updateRoute);
+                    updateRoute();
+                }
             });
 
-            showHome();
-            showProducts();
-        }
-
-        // Funções para navegação
-        window.showHome = function () {
-            document.getElementById('productContainer').style.display = 'block';
-            document.getElementById('sellForm').style.display = 'none';
-        }
-
-        window.showSellForm = function () {
-            document.getElementById('productContainer').style.display = 'none';
-            document.getElementById('sellForm').style.display = 'block';
-        }
-
-        window.showProfile = function () {
-            window.location.href = 'profile.html'; // Supondo que você tenha uma página de perfil
-        }
-
-        window.onload = showProducts;
-
-        document.addEventListener("DOMContentLoaded", async function () {
-            const partnerStoresList = document.getElementById('partnerStoresList');
-            try {
-                const querySnapshot = await getDocs(collection(db, 'partnerStores'));
-                querySnapshot.forEach((doc) => {
-                    const store = doc.data();
-                    const partnerCard = document.createElement('div');
-                    partnerCard.className = 'partner-card';
-                    partnerCard.innerHTML = `
-                <img src="${store.logoUrl}" alt="${store.name} Logo">
-                <h3>${store.name}</h3>
-                <a href="${store.link}" target="_blank">Visitar Loja</a>
-            `;
-                    partnerStoresList.appendChild(partnerCard);
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    map.setView([lat, lng], 15);
+                    startMarker = L.marker([lat, lng], { draggable: true }).addTo(map);
+                    startMarker.on('dragend', updateRoute);
                 });
+            } else {
+                alert("Seu navegador não suporta geolocalização.");
+            }
+        }
+
+        async function updateRoute() {
+            if (startMarker && endMarker) {
+                const startLatLng = startMarker.getLatLng();
+                const endLatLng = endMarker.getLatLng();
+
+                const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${startLatLng.lng},${startLatLng.lat};${endLatLng.lng},${endLatLng.lat}?overview=false`);
+                const data = await response.json();
+                const route = data.routes[0];
+
+                const distance = route.distance / 1000; // em km
+                const price = distance * 2; // R$ 2 por km
+                document.getElementById('price').value = `R$ ${price.toFixed(2)}`;
+            }
+        }
+
+        function fetchLocationSuggestions(query, listId) {
+            if (query.length < 3) return;
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&addressdetails=1&limit=5`)
+                .then(response => response.json())
+                .then(data => {
+                    const suggestions = data.map(item => `<option value="${item.display_name}">`);
+                    document.getElementById(listId).innerHTML = suggestions.join('');
+                });
+        }
+
+        document.getElementById('startLocation').addEventListener('input', function () {
+            fetchLocationSuggestions(this.value, 'startLocationSuggestions');
+        });
+
+        document.getElementById('endLocation').addEventListener('input', function () {
+            fetchLocationSuggestions(this.value, 'endLocationSuggestions');
+        });
+
+        document.getElementById('requestRide').addEventListener('click', async function () {
+            document.getElementById('loadingMessage').style.display = 'block';
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    alert('Você precisa estar logado para solicitar uma corrida.');
+                    return;
+                }
+
+                if (!startMarker || !endMarker) {
+                    alert('Por favor, selecione os pontos de partida e destino.');
+                    return;
+                }
+
+                const startLatLng = startMarker.getLatLng();
+                const endLatLng = endMarker.getLatLng();
+
+                const rideData = {
+                    userId: user.uid,
+                    startLocation: {
+                        lat: startLatLng.lat,
+                        lng: startLatLng.lng
+                    },
+                    endLocation: {
+                        lat: endLatLng.lat,
+                        lng: endLatLng.lng
+                    },
+                    price: parseFloat(document.getElementById('price').value.replace('R$', '').trim()),
+                    status: 'Aguardando motorista',
+                    timestamp: new Date()
+                };
+
+                const rideRef = await addDoc(collection(db, 'rides'), rideData);
+                listenForRideAcceptance(rideRef.id);
+
             } catch (error) {
-                console.error("Erro ao carregar lojas parceiras:", error);
+                console.error("Erro ao solicitar corrida: ", error);
+                alert('Erro ao solicitar corrida.');
             }
         });
+
+        function listenForRideAcceptance(rideId) {
+            const rideDocRef = doc(db, 'rides', rideId);
+            onSnapshot(rideDocRef, (doc) => {
+                if (doc.exists()) {
+                    const rideData = doc.data();
+                    if (rideData.status !== 'Aguardando motorista') {
+                        document.getElementById('loadingMessage').innerText = `Motorista ${rideData.driverName} aceitou sua corrida. Placa: ${rideData.driverPlate}`;
+                    }
+                }
+            });
+        }
+
+        function showHome() {
+            document.getElementById('homeContainer').style.display = 'block';
+            document.getElementById('rideHistoryContainer').style.display = 'none';
+        }
+
+        function showRideHistory() {
+            document.getElementById('homeContainer').style.display = 'none';
+            document.getElementById('rideHistoryContainer').style.display = 'block';
+            loadRideHistory();
+        }
+
+        async function loadRideHistory() {
+            const user = auth.currentUser;
+            if (!user) {
+                alert('Você precisa estar logado para ver o histórico de viagens.');
+                return;
+            }
+
+            const q = query(collection(db, 'rides'), where('userId', '==', user.uid));
+            const querySnapshot = await getDocs(q);
+            const rideHistoryContainer = document.getElementById('rideHistoryContainer');
+            rideHistoryContainer.innerHTML = '<h1>Histórico de Viagens</h1>';
+
+            querySnapshot.forEach((doc) => {
+                const rideData = doc.data();
+                const rideElement = document.createElement('div');
+                rideElement.innerHTML = `
+                    <p>Partida: ${rideData.startLocation}</p>
+                    <p>Destino: ${rideData.endLocation}</p>
+                    <p>Preço: R$ ${rideData.price.toFixed(2)}</p>
+                    <p>Status: ${rideData.status}</p>
+                `;
+                rideHistoryContainer.appendChild(rideElement);
+            });
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                showHome();
+            } else {
+                alert('Você precisa estar logado para usar o aplicativo.');
+                // Redirecionar para a página de login, se necessário
+            }
+        });
+
+        window.addEventListener('load', initMap);
     </script>
 </body>
 
