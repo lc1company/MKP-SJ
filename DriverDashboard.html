@@ -100,6 +100,23 @@
         <div class="map-container" id="map"></div>
         <button id="toggleOnline">Ficar Online</button>
     </div>
+
+    <div id="rideInfoBox"
+        style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 75%; max-width: 920px; height: 40%; background-color: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); padding: 20px; z-index: 999;">
+        <!-- Conteúdo dinâmico da corrida será inserido aqui -->
+    </div>
+
+    <div id="driverBan"
+        style="display: none; background-color: #ffe6e6; color: #dc3545; padding: 10px; text-align: center; margin-bottom: 10%;">
+        <p><strong>Aviso:</strong> Seu cadastro como motorista foi banido devido à violação dos termos de uso.</p>
+    </div>
+
+    <div id="driverWarning"
+        style="display: none; background-color: #ffe6e6; color: #dc3545; padding: 10px; text-align: center; margin-bottom: 10%;">
+        <p><strong>Aviso:</strong> Seu cadastro como motorista ainda está em análise. Se estiver demorando mais de 3
+            dias, entre em contato pelo WhatsApp: <a href="https://wa.me/19996564968">19996564968</a>.</p>
+    </div>
+
     <div class="container" id="rideHistory" style="display: none;">
         <h2>Histórico de Corridas</h2>
         <!-- Histórico de corridas será exibido aqui -->
@@ -111,7 +128,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getFirestore, collection, getDocs, updateDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, updateDoc, doc, getDoc, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
         const firebaseConfig = {
@@ -131,19 +148,51 @@
         let isDriver = false;
 
         onAuthStateChanged(auth, async (user) => {
+            const driverWarning = document.getElementById('driverWarning');
+            const driverBan = document.getElementById('driverBan');
+
             if (user) {
                 const userDoc = await getDoc(doc(db, "users", user.uid));
-                if (userDoc.exists() && userDoc.data().role === 'driver') {
-                    isDriver = true;
-                    toggleOnlineButton.style.display = 'block';
-                    loadRideHistory();
-                } else {
-                    isDriver = false;
-                    toggleOnlineButton.style.display = 'none';
+
+                if (userDoc.exists()) {
+                    if (userDoc.data().role === 'driver') {
+                        if (userDoc.data().isBanned) {
+                            // Motorista está banido
+                            isDriver = false;
+                            toggleOnlineButton.style.display = 'none';
+                            driverWarning.style.display = 'none';
+                            driverBan.style.display = 'block'; // Mostra o aviso de banimento
+                        } else {
+                            // Motorista não está banido
+                            isDriver = true;
+                            toggleOnlineButton.style.display = 'block';
+                            driverWarning.style.display = 'none';
+                            driverBan.style.display = 'none';
+
+                            // Recupera o status online do Firestore
+                            const isOnline = userDoc.data().isOnline;
+                            toggleOnlineButton.textContent = isOnline ? 'Ficar Offline' : 'Ficar Online';
+
+                            if (isOnline) {
+                                loadAndListenAvailableRides();
+                            } else {
+                                stopListeningAvailableRides();
+                            }
+                        }
+                    } else {
+                        // Não é motorista
+                        isDriver = false;
+                        toggleOnlineButton.style.display = 'none';
+                        driverWarning.style.display = 'block'; // Mostra o aviso de cadastro em análise
+                        driverBan.style.display = 'none';
+                    }
                 }
             } else {
+                // Usuário não está autenticado
                 isDriver = false;
                 toggleOnlineButton.style.display = 'none';
+                driverWarning.style.display = 'none';
+                driverBan.style.display = 'none';
             }
         });
 
@@ -151,6 +200,9 @@
         toggleOnlineButton.addEventListener('click', () => {
             toggleOnlineStatus();
         });
+
+        // Variável global para armazenar o listener de corridas
+        let ridesListener = null;
 
         async function toggleOnlineStatus() {
             const user = auth.currentUser;
@@ -163,17 +215,26 @@
                         isOnline: !isOnline
                     });
                     toggleOnlineButton.textContent = isOnline ? 'Ficar Online' : 'Ficar Offline';
+
+                    if (!isOnline) {
+                        // Se o motorista ficou online, carregue e escute as corridas disponíveis
+                        loadAndListenAvailableRides();
+                    } else {
+                        // Se o motorista ficou offline, pare de escutar as corridas disponíveis
+                        stopListeningAvailableRides();
+                        document.getElementById('rideHistory').innerHTML = '<h2>Corridas Disponíveis</h2>';
+                    }
                 }
             }
         }
 
-        function showDriverDashboard() {
+        window.showDriverDashboard = function () {
             document.getElementById('driverDashboard').style.display = 'block';
             document.getElementById('rideHistory').style.display = 'none';
             initMap();
         }
 
-        function showRideHistory() {
+        window.showRideHistory = function () {
             document.getElementById('driverDashboard').style.display = 'none';
             document.getElementById('rideHistory').style.display = 'block';
             loadRideHistory();
@@ -198,8 +259,14 @@
             }
         }
 
+        let map; // Declaração da variável global
+
         function initMap() {
-            const map = L.map('map').setView([-23.55052, -46.633308], 12);
+            if (map) {
+                return; // Se o mapa já foi inicializado, sai da função
+            }
+
+            map = L.map('map').setView([-23.55052, -46.633308], 12);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
             }).addTo(map);
@@ -218,9 +285,162 @@
             }
         }
 
+        window.showDriverDashboard = function () {
+            document.getElementById('driverDashboard').style.display = 'block';
+            document.getElementById('rideHistory').style.display = 'none';
+            initMap(); // Inicializa o mapa se ainda não foi inicializado
+        }
+
         document.addEventListener('DOMContentLoaded', (event) => {
             initMap();
         });
+
+        async function loadAndListenAvailableRides() {
+            const ridesCollection = collection(db, "rides");
+            const q = query(ridesCollection, where("status", "==", "Aguardando motorista"));
+
+            try {
+                const querySnapshot = await getDocs(q);
+                querySnapshot.forEach((doc) => {
+                    const ride = doc.data();
+                    displayRideInfo(ride);
+                });
+
+                ridesListener = onSnapshot(q, (snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added') {
+                            const ride = change.doc.data();
+                            displayRideInfo(ride);
+                        }
+                    });
+                });
+
+            } catch (error) {
+                console.error("Erro ao carregar e ouvir corridas disponíveis:", error);
+                alert("Ocorreu um erro ao carregar as corridas disponíveis. Verifique o console para mais detalhes.");
+            }
+        }
+
+        function displayRideInfo(ride) {
+            const rideInfoBox = document.getElementById('rideInfoBox');
+
+            if (ride && ride.price !== undefined) {
+                rideInfoBox.innerHTML = `
+            <h3>Nova Corrida Disponível</h3>
+            <p>Partida: ${ride.startLocation.lat}, ${ride.startLocation.lng}</p>
+            <p>Destino: ${ride.endLocation.lat}, ${ride.endLocation.lng}</p>
+            <p>Preço: R$ ${ride.price.toFixed(2)}</p>
+            <button onclick="acceptRide('${ride.id}')">Aceitar Corrida</button>
+            <button onclick="declineRide('${ride.id}')">Recusar Corrida</button>
+        `;
+            } else {
+                rideInfoBox.innerHTML = `
+            <h3>Nova Corrida Disponível</h3>
+            <p>Partida: ${ride.startLocation.lat}, ${ride.startLocation.lng}</p>
+            <p>Destino: ${ride.endLocation.lat}, ${ride.endLocation.lng}</p>
+            <p>Preço: Preço indisponível</p>
+            <button onclick="acceptRide('${ride.id}')">Aceitar Corrida</button>
+            <button onclick="declineRide('${ride.id}')">Recusar Corrida</button>
+        `;
+            }
+
+            rideInfoBox.style.display = 'block';
+        }
+
+        // Função para calcular a distância entre dois pontos geográficos (em metros)
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // raio da Terra em metros
+            const φ1 = lat1 * Math.PI / 180; // φ, λ em radianos
+            const φ2 = lat2 * Math.PI / 180;
+            const Δφ = (lat2 - lat1) * Math.PI / 180;
+            const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+                Math.cos(φ1) * Math.cos(φ2) *
+                Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            const d = R * c; // distância em metros
+            return d;
+        }
+
+        // Função para encontrar o motorista mais próximo
+        async function findNearestDriver(startLocation) {
+            const driversCollection = collection(db, "users");
+            const driversSnapshot = await getDocs(driversCollection);
+            let nearestDriver = null;
+            let minDistance = Infinity;
+
+            driversSnapshot.forEach((doc) => {
+                const driver = doc.data();
+                if (driver.role === 'driver' && driver.isOnline && !driver.isBanned) {
+                    const distance = calculateDistance(startLocation.lat, startLocation.lng, driver.currentLocation.lat, driver.currentLocation.lng);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestDriver = driver;
+                    }
+                }
+            });
+
+            return nearestDriver;
+        }
+
+        window.acceptRide = async function (rideId) {
+            const user = auth.currentUser;
+            if (user && rideId) {
+                try {
+                    const rideDocRef = doc(db, "rides", rideId);
+                    const rideDoc = await getDoc(rideDocRef);
+
+                    if (rideDoc.exists()) {
+                        await updateDoc(rideDocRef, {
+                            status: 'accepted',
+                            driverId: user.uid
+                        });
+                        alert('Corrida aceita com sucesso!');
+                    } else {
+                        alert('A corrida não foi encontrada. Verifique novamente.');
+                    }
+                } catch (error) {
+                    console.error('Erro ao aceitar corrida:', error);
+                    alert('Erro ao aceitar corrida. Verifique o console para mais detalhes.');
+                }
+            } else {
+                alert('ID da corrida inválido.');
+            }
+        }
+
+        window.declineRide = async function (rideId) {
+            const user = auth.currentUser;
+            if (user && rideId) {
+                try {
+                    const rideDocRef = doc(db, "rides", rideId);
+                    const rideDoc = await getDoc(rideDocRef);
+
+                    if (rideDoc.exists()) {
+                        await updateDoc(rideDocRef, {
+                            status: 'declined'
+                        });
+                        alert('Corrida recusada com sucesso!');
+                    } else {
+                        alert('A corrida não foi encontrada. Verifique novamente.');
+                    }
+                } catch (error) {
+                    console.error('Erro ao recusar corrida:', error);
+                    alert('Erro ao recusar corrida. Verifique o console para mais detalhes.');
+                }
+            } else {
+                alert('ID da corrida inválido.');
+            }
+        }
+
+        function stopListeningAvailableRides() {
+            if (ridesListener) {
+                ridesListener(); // Desativa o listener de novas corridas
+                ridesListener = null;
+            }
+        }
+
     </script>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
 </body>
