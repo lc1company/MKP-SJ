@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tela de Login Entregadores</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        input[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            border: none;
+            border-radius: 4px;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h2 style="color: #000; margin-left: 27%;">Tela de login</h2>
+        <button
+            style="margin-bottom: 2%; font-size: 20px; background-color: #007bff; border-radius: 4px; color:#fff; margin-left: 25%; cursor: pointer;"
+            onclick="showRegisterForm(event)">Registro</button>
+        <button
+            style="margin-bottom: 2%; font-size: 20px; background-color: #007bff; border-radius: 4px; color:#fff; cursor: pointer;"
+            onclick="showLoginForm(event)">Login</button>
+
+        <form id="registerForm" style="display:none;" onsubmit="registerUser(event)">
+            <input type="text" placeholder="Nome Completo" id="fullName">
+            <input type="text" placeholder="CPF ou CNPJ" id="cpfCnpj">
+            <input type="email" placeholder="Email" id="email">
+            <input type="password" placeholder="Senha" id="password">
+            <input type="checkbox" id="termsCheckbox" required>
+            <label for="termsCheckbox">Confirmo que li e aceito os<a href="TermosDeUso.html">Termos de Uso</a></label>
+            <p style="font-size: 15px;">Foto do RG (frente)</p>
+            <input type="file" accept="image/*" id="rgFile" required>
+            <p style="font-size: 15px;">Foto do RG (Verso)</p>
+            <input type="file" accept="image/*" id="rgFileVerso" required>
+            <p style="font-size: 15px;">Foto da CNH</p>
+            <input type="file" accept="image/*" id="cnhFile" required>
+            <p style="font-size: 15px;">Foto do rosto</p>
+            <input type="file" accept="image/*" id="faceFile" required>
+            <input type="submit" value="Salvar">
+        </form>
+
+        <form id="loginForm" style="display:none;" onsubmit="loginUser(event)">
+            <input type="email" placeholder="Email" id="loginEmail">
+            <input type="password" placeholder="Senha" id="loginPassword">
+            <input type="submit" value="Entrar">
+        </form>
+
+        <p id="message" style="display:none;"></p>
+    </div>
+
+    <!-- Adicione as bibliotecas do Firebase -->
+    <script type="module">
+        // Importar as bibliotecas do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+        // Configurações do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyBWzJvwwupeyVts_elKXG0a-ILTqP6Mvzg",
+            authDomain: "markeplace-sj.firebaseapp.com",
+            projectId: "markeplace-sj",
+            storageBucket: "markeplace-sj.appspot.com",
+            messagingSenderId: "942192953658",
+            appId: "1:942192953658:web:8f07a84d2a9f56790fa803",
+            measurementId: "G-C1710MDZ9F"
+        };
+
+        // Inicializar o Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        window.showRegisterForm = function (event) {
+            event.preventDefault(); // Evita a atualização da página
+            document.getElementById("registerForm").style.display = "block";
+            document.getElementById("loginForm").style.display = "none";
+            document.getElementById("message").style.display = "none";
+        }
+
+        window.showLoginForm = function (event) {
+            event.preventDefault(); // Evita a atualização da página
+            document.getElementById("loginForm").style.display = "block";
+            document.getElementById("registerForm").style.display = "none";
+            document.getElementById("message").style.display = "none";
+        }
+
+        window.registerUser = async function (event) {
+            event.preventDefault(); // Evita a atualização da página
+            console.log("Registrando usuário...");
+
+            const fullName = document.getElementById("fullName").value;
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+            const cpfCnpj = document.getElementById("cpfCnpj").value;
+            const rgFile = document.getElementById("rgFile").files[0]; // Obter o arquivo real selecionado
+            const rgFileVerso = document.getElementById("rgFileVerso").files[0];
+            const cnhFile = document.getElementById("cnhFile").files[0]; // Obter o arquivo real selecionado
+            const faceFile = document.getElementById("faceFile").files[0]; // Obter o arquivo real selecionado
+
+            try {
+                // Comprimir as imagens antes de enviar para o Firestore
+                const compressedRgFile = await compressImage(rgFile);
+                const compressedRgFileVerso = await compressImage(rgFileVerso);
+                const compressedCnhFile = await compressImage(cnhFile);
+                const compressedFaceFile = await compressImage(faceFile);
+
+                // Criar o usuário no Firebase Authentication
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                console.log("Usuário registrado com sucesso!");
+
+                // Obter o UID do usuário criado
+                const userUid = userCredential.user.uid;
+
+                // Upload das imagens comprimidas para o Firebase Storage
+                const rgFileUrl = await uploadFile(compressedRgFile, `rg_${userUid}.jpg`);
+                const rgFileVersoUrl = await uploadFile(compressedRgFileVerso, `rgVerso_${userUid}.jpg`);
+                const cnhFileUrl = await uploadFile(compressedCnhFile, `cnh_${userUid}.jpg`);
+                const faceFileUrl = await uploadFile(compressedFaceFile, `face_${userUid}.jpg`);
+
+                // Salvar os dados do usuário no Firestore
+                const userData = {
+                    fullName: fullName,
+                    email: email,
+                    cpfCnpj: cpfCnpj,
+                    rgFileUrl: rgFileUrl,
+                    rgFileVersoUrl: rgFileVersoUrl,
+                    cnhFileUrl: cnhFileUrl,
+                    faceFileUrl: faceFileUrl
+                };
+
+                await setDoc(doc(db, "users", userUid), userData);
+                console.log("Dados do usuário salvos no Firestore com sucesso!");
+
+                // Limpar o formulário e exibir mensagem de sucesso
+                document.getElementById("registerForm").reset();
+                document.getElementById("message").innerHTML = "Usuário registrado com sucesso!";
+                document.getElementById("message").style.display = "block";
+            } catch (error) {
+                console.error("Erro ao registrar usuário: ", error);
+                const mensagemErroElement = document.getElementById("message");
+                mensagemErroElement.textContent = "Erro, verifique os campos e tente novamente.";
+                mensagemErroElement.style.display = "block";
+            }
+        }
+
+        window.loginUser = function (event) {
+            event.preventDefault(); // Evita a atualização da página
+            console.log("Fazendo login...");
+
+            const email = document.getElementById("loginEmail").value;
+            const password = document.getElementById("loginPassword").value;
+
+            signInWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    console.log("Login bem-sucedido!");
+
+                    document.getElementById("loginForm").reset();
+                    document.getElementById("message").innerHTML = "Login bem-sucedido!";
+                    document.getElementById("message").style.display = "block";
+
+                    window.location.href = "DriverDashboard.html";
+                })
+                .catch((error) => {
+                    console.error("Erro ao fazer login: ", error);
+                    const mensagemErroElement = document.getElementById("message");
+                    mensagemErroElement.textContent = "Erro email ou senha incorreta, tente novamente.";
+                    mensagemErroElement.style.display = "block";
+                });
+        }
+
+        // Função para comprimir a imagem
+        window.compressImage = async function (imageFile) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+
+                reader.onload = function (event) {
+                    const img = new Image();
+
+                    img.onload = function () {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+
+                        // Definir as dimensões máximas da imagem
+                        const maxWidth = 800;
+                        const maxHeight = 600;
+
+                        let width = img.width;
+                        let height = img.height;
+
+                        // Redimensionar a imagem mantendo a proporção
+                        if (width > height) {
+                            if (width > maxWidth) {
+                                height *= maxWidth / width;
+                                width = maxWidth;
+                            }
+                        } else {
+                            if (height > maxHeight) {
+                                width *= maxHeight / height;
+                                height = maxHeight;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+
+                        // Desenhar a imagem redimensionada no canvas
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Converter o canvas de volta para Blob
+                        canvas.toBlob((blob) => {
+                            resolve(blob);
+                        }, 'image/jpeg', 0.8); // Comprimir para JPEG com 80% de qualidade
+                    };
+
+                    img.src = event.target.result;
+                };
+
+                reader.readAsDataURL(imageFile);
+            });
+        }
+
+        // Função para fazer upload de arquivo para o Firebase Storage
+        async function uploadFile(file, fileName) {
+            return new Promise((resolve, reject) => {
+                const storageRef = ref(storage, fileName);
+                const uploadTask = uploadBytes(storageRef, file);
+
+                uploadTask.then((snapshot) => {
+                    // Upload completo, obter a URL do arquivo
+                    getDownloadURL(snapshot.ref).then((downloadURL) => {
+                        resolve(downloadURL);
+                    });
+                }).catch((error) => {
+                    reject(error);
+                });
+            });
+        }
+
+    </script>
+
+</body>
+
+</html>
