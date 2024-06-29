@@ -193,6 +193,8 @@
                 toggleOnlineButton.style.display = 'none';
                 driverWarning.style.display = 'none';
                 driverBan.style.display = 'none';
+                alert('Você precisa estar logado como motorista para usar o aplicativo.');
+                window.location.href = "RegisterOrLoginDrivers.html";
             }
         });
 
@@ -330,9 +332,8 @@
             <p>Partida: ${ride.startLocation.lat}, ${ride.startLocation.lng}</p>
             <p>Destino: ${ride.endLocation.lat}, ${ride.endLocation.lng}</p>
             <p>Preço: R$ ${ride.price.toFixed(2)}</p>
-            <button onclick="acceptRide('${ride.id}')">Aceitar Corrida</button>
-            <button onclick="declineRide('${ride.id}')">Recusar Corrida</button>
-        `;
+            <button style="background-color: green; color: #fff; font-size 30px; border-radius: 15px;" onclick="acceptRide('${ride.id}')">Aceitar Corrida</button>
+            <button style="background-color: red; color: #fff; font-size 30px; border-radius: 15px;" onclick="declineRide('${ride.id}')">Recusar Corrida</button>`;
             } else {
                 rideInfoBox.innerHTML = `
             <h3>Nova Corrida Disponível</h3>
@@ -340,8 +341,7 @@
             <p>Destino: ${ride.endLocation.lat}, ${ride.endLocation.lng}</p>
             <p>Preço: Preço indisponível</p>
             <button onclick="acceptRide('${ride.id}')">Aceitar Corrida</button>
-            <button onclick="declineRide('${ride.id}')">Recusar Corrida</button>
-        `;
+            <button onclick="declineRide('${ride.id}')">Recusar Corrida</button>`;
             }
 
             rideInfoBox.style.display = 'block';
