@@ -90,6 +90,67 @@
             border: 1px solid #ccc;
             border-radius: 8px;
         }
+
+        .ride-info {
+            width: 75%;
+            height: 40%;
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        #rideInfoBox {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 75%;
+            max-width: 920px;
+            height: auto;
+            /* Ajuste de altura */
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            z-index: 999;
+        }
+
+        #rideInfoBox .button-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+        }
+
+        #rideInfoBox button {
+            background-color: green;
+            color: #fff;
+            font-size: 16px;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 5px;
+            flex: 1;
+        }
+
+        #rideInfoBox button:hover {
+            background-color: darkgreen;
+        }
+
+        #rideInfoBox button.decline {
+            background-color: red;
+        }
+
+        #rideInfoBox button.decline:hover {
+            background-color: darkred;
+        }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
 </head>
@@ -101,9 +162,12 @@
         <button id="toggleOnline">Ficar Online</button>
     </div>
 
-    <div id="rideInfoBox"
-        style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 75%; max-width: 920px; height: 40%; background-color: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); padding: 20px; z-index: 999;">
-        <!-- Conteúdo dinâmico da corrida será inserido aqui -->
+    <div id="rideInfoBox">
+        <p>Informações da Corrida</p>
+        <div class="button-container">
+            <button>Aceitar Corrida</button>
+            <button class="decline">Recusar Corrida</button>
+        </div>
     </div>
 
     <div id="driverBan"
@@ -323,28 +387,52 @@
             }
         }
 
-        function displayRideInfo(ride) {
+        async function displayRideInfo(ride) {
             const rideInfoBox = document.getElementById('rideInfoBox');
 
             if (ride && ride.price !== undefined) {
+                const startAddress = await getAddressFromCoordinates(ride.startLocation.lat, ride.startLocation.lng);
+                const endAddress = await getAddressFromCoordinates(ride.endLocation.lat, ride.endLocation.lng);
+                const distance = calculateDistance(ride.startLocation.lat, ride.startLocation.lng, ride.endLocation.lat, ride.endLocation.lng);
+                const distanceInKm = (distance / 1000).toFixed(2);
+
                 rideInfoBox.innerHTML = `
             <h3>Nova Corrida Disponível</h3>
-            <p>Partida: ${ride.startLocation.lat}, ${ride.startLocation.lng}</p>
-            <p>Destino: ${ride.endLocation.lat}, ${ride.endLocation.lng}</p>
+            <p>Partida: ${startAddress}</p>
+            <p>Destino: ${endAddress}</p>
+            <p>Distância: ${distanceInKm} km</p>
             <p>Preço: R$ ${ride.price.toFixed(2)}</p>
-            <button style="background-color: green; color: #fff; font-size 30px; border-radius: 15px;" onclick="acceptRide('${ride.id}')">Aceitar Corrida</button>
-            <button style="background-color: red; color: #fff; font-size 30px; border-radius: 15px;" onclick="declineRide('${ride.id}')">Recusar Corrida</button>`;
+            <button style="background-color: green; color: #fff; font-size: 20px; border-radius: 15px;" onclick="acceptRide('${ride.id}')">Aceitar Corrida</button>
+            <button style="background-color: red; color: #fff; font-size: 20px; border-radius: 15px;" onclick="declineRide('${ride.id}')">Recusar Corrida</button>`;
             } else {
                 rideInfoBox.innerHTML = `
             <h3>Nova Corrida Disponível</h3>
-            <p>Partida: ${ride.startLocation.lat}, ${ride.startLocation.lng}</p>
-            <p>Destino: ${ride.endLocation.lat}, ${ride.endLocation.lng}</p>
+            <p>Partida: Coordenadas (${ride.startLocation.lat}, ${ride.startLocation.lng})</p>
+            <p>Destino: Coordenadas (${ride.endLocation.lat}, ${ride.endLocation.lng})</p>
+            <p>Distância: Indisponível</p>
             <p>Preço: Preço indisponível</p>
             <button onclick="acceptRide('${ride.id}')">Aceitar Corrida</button>
             <button onclick="declineRide('${ride.id}')">Recusar Corrida</button>`;
             }
 
             rideInfoBox.style.display = 'block';
+        }
+
+        async function getAddressFromCoordinates(lat, lon) {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`;
+            try {
+                const response = await fetch(url, { method: 'GET', mode: 'cors' });
+                if (!response.ok) {
+                    throw new Error(`Network response was not ok: ${response.statusText}`);
+                }
+                const data = await response.json();
+                const address = data.address;
+                const formattedAddress = `${address.road || ''}, ${address.suburb || ''}, ${address.city || address.town || address.village || ''}, ${address.state || ''}`;
+                return formattedAddress.replace(/(, , )|(^, )|(, $)/g, ''); // Remove vírgulas extras
+            } catch (error) {
+                console.error('Failed to fetch address from coordinates:', error);
+                return 'Endereço não disponível';
+            }
         }
 
         // Função para calcular a distância entre dois pontos geográficos (em metros)
