@@ -166,6 +166,19 @@
             }
         }
 
+        navigator.geolocation.getCurrentPosition(function (position) {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+
+            document.getElementById('startLocation').addEventListener('input', function () {
+                fetchLocationSuggestions(this.value, 'startLocationSuggestions', lat, lon);
+            });
+
+            document.getElementById('endLocation').addEventListener('input', function () {
+                fetchLocationSuggestions(this.value, 'endLocationSuggestions', lat, lon);
+            });
+        });
+
         async function updateRoute() {
             if (!startMarker || !endMarker) {
                 return; // Retorna se os marcadores não estiverem definidos
@@ -208,21 +221,36 @@
             return data.display_name;
         }
 
-        function fetchLocationSuggestions(query, listId) {
+        window.fetchLocationSuggestions = function (query, listId, lat, lon) {
             if (query.length < 3) return;
-            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&addressdetails=1&limit=5`)
+            const formattedQuery = encodeURIComponent(query);
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${formattedQuery}&addressdetails=1&limit=5&viewbox=${lon - 0.1},${lat - 0.1},${lon + 0.1},${lat + 0.1}&bounded=1`;
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
-                    const suggestions = data.map(item => `<option value="${item.display_name}">`);
+                    const suggestions = data.map(item => {
+                        const address = item.address;
+                        const display_name = `${address.road || ''}, ${address.house_number || ''}, ${address.city || address.town || ''}, ${address.state || ''}`;
+                        return `<option value="${display_name}">`;
+                    });
                     document.getElementById(listId).innerHTML = suggestions.join('');
                 })
                 .catch(error => console.error('Erro ao buscar sugestões de localização:', error));
         }
 
+        function formatAddress(address) {
+            const road = address.road || '';
+            const houseNumber = address.house_number || '';
+            const city = address.city || address.town || '';
+            const state = address.state || '';
+            return `${road} ${houseNumber}, ${city}, ${state}`;
+        }
+
         document.getElementById('startLocation').addEventListener('change', async function () {
             const query = this.value;
             if (query.length > 0) {
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&addressdetails=1&limit=1`);
+                const formattedQuery = encodeURIComponent(query);
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${formattedQuery}&addressdetails=1&limit=1`);
                 const data = await response.json();
                 if (data.length > 0) {
                     const location = data[0];
@@ -238,11 +266,11 @@
             }
         });
 
-        // Event Listener para campo endLocation
         document.getElementById('endLocation').addEventListener('change', async function () {
             const query = this.value;
             if (query.length > 0) {
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&addressdetails=1&limit=1`);
+                const formattedQuery = encodeURIComponent(query);
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${formattedQuery}&addressdetails=1&limit=1`);
                 const data = await response.json();
                 if (data.length > 0) {
                     const location = data[0];
