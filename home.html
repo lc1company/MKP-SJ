@@ -92,6 +92,10 @@
             border-radius: 10px;
             margin-top: 10px;
         }
+
+        input::-webkit-calendar-picker-indicator {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -234,6 +238,12 @@
                         return `<option value="${display_name}">`;
                     });
                     document.getElementById(listId).innerHTML = suggestions.join('');
+                    // Simula um evento de input para forçar o datalist a mostrar as opções
+                    const event = new Event('input', {
+                        bubbles: true,
+                        cancelable: true,
+                    });
+                    document.getElementById(listId).dispatchEvent(event);
                 })
                 .catch(error => console.error('Erro ao buscar sugestões de localização:', error));
         }
