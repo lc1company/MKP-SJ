@@ -325,7 +325,7 @@
             }
         }
 
-        let map; // Declaração da variável global
+        let map, startMarker, endMarker, routeLine; // Declaração da variável global
 
         function initMap() {
             if (map) {
@@ -342,7 +342,17 @@
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
                     map.setView([lat, lng], 15);
-                    L.marker([lat, lng]).addTo(map)
+
+                    // Marcador do motorista
+                    const driverIconUrl = 'https://firebasestorage.googleapis.com/v0/b/markeplace-sj.appspot.com/o/driverIcon.png?alt=media&token=8089280f-46f0-4499-94fd-b9f59c8773a2'; // Substitua pela URL da imagem driverIcon.png no Firebase Storage
+                    const driverIcon = L.icon({
+                        iconUrl: driverIconUrl,
+                        iconSize: [38, 38],
+                        iconAnchor: [19, 38],
+                        popupAnchor: [-3, -76],
+                    });
+
+                    L.marker([lat, lng], { icon: driverIcon }).addTo(map)
                         .bindPopup('Você está aqui')
                         .openPopup();
                 });
@@ -391,17 +401,57 @@
             const rideInfoBox = document.getElementById('rideInfoBox');
 
             if (ride && ride.price !== undefined) {
+                const startLatLng = [ride.startLocation.lat, ride.startLocation.lng];
+                const endLatLng = [ride.endLocation.lat, ride.endLocation.lng];
+
+                // Remove marcadores e linha de rota antigos, se existirem
+                if (startMarker) {
+                    map.removeLayer(startMarker);
+                }
+                if (endMarker) {
+                    map.removeLayer(endMarker);
+                }
+                if (routeLine) {
+                    map.removeLayer(routeLine);
+                }
+
+                // Adiciona marcadores para partida (A) e destino (B) com ícones personalizados
+                const partidaIconUrl = 'https://firebasestorage.googleapis.com/v0/b/markeplace-sj.appspot.com/o/driverIcon.png?alt=media&token=8089280f-46f0-4499-94fd-b9f59c8773a2'; // Substitua pela URL da imagem partida.png no Firebase Storage
+                const destinoIconUrl = 'https://firebasestorage.googleapis.com/v0/b/markeplace-sj.appspot.com/o/driverIcon.png?alt=media&token=8089280f-46f0-4499-94fd-b9f59c8773a2'; // Substitua pela URL da imagem destino.png no Firebase Storage
+
+                startMarker = L.marker(startLatLng, { icon: L.icon({ iconUrl: partidaIconUrl, iconSize: [50, 50] }) }).addTo(map);
+                endMarker = L.marker(endLatLng, { icon: L.icon({ iconUrl: destinoIconUrl, iconSize: [50, 50] }) }).addTo(map);
+
+                startMarker.bindPopup('Partida').openPopup();
+                endMarker.bindPopup('Destino').openPopup();
+
+                // Cria uma linha de rota entre os pontos A e B
+                const response = await fetch(`https://router.project-osrm.org/route/v1/driving/${startLatLng[1]},${startLatLng[0]};${endLatLng[1]},${endLatLng[0]}?overview=full&geometries=geojson`);
+                const data = await response.json();
+
+                if (!data.routes || data.routes.length === 0) {
+                    return; // Retorna se não houver rotas disponíveis
+                }
+
+                const route = data.routes[0];
+                const routeCoordinates = route.geometry.coordinates;
+
+                // Cria a linha de rota no mapa
+                routeLine = L.geoJSON(route.geometry).addTo(map);
+
+                const distance = route.distance / 1000; // em km
+                const price = distance * 2; // R$ 2 por km
+
                 const startAddress = await getAddressFromCoordinates(ride.startLocation.lat, ride.startLocation.lng);
                 const endAddress = await getAddressFromCoordinates(ride.endLocation.lat, ride.endLocation.lng);
-                const distance = calculateDistance(ride.startLocation.lat, ride.startLocation.lng, ride.endLocation.lat, ride.endLocation.lng);
-                const distanceInKm = (distance / 1000).toFixed(2);
+                const distanceInKm = (distance).toFixed(2);
 
                 rideInfoBox.innerHTML = `
             <h3>Nova Corrida Disponível</h3>
             <p>Partida: ${startAddress}</p>
             <p>Destino: ${endAddress}</p>
             <p>Distância: ${distanceInKm} km</p>
-            <p>Preço: R$ ${ride.price.toFixed(2)}</p>
+            <p>Preço: R$ ${price.toFixed(2)}</p>
             <button style="background-color: green; color: #fff; font-size: 20px; border-radius: 15px;" onclick="acceptRide('${ride.id}')">Aceitar Corrida</button>
             <button style="background-color: red; color: #fff; font-size: 20px; border-radius: 15px;" onclick="declineRide('${ride.id}')">Recusar Corrida</button>`;
             } else {
